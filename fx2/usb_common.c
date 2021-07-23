@@ -43,6 +43,10 @@ xdata unsigned char *current_devqual_descr;
 xdata unsigned char *current_config_descr;
 xdata unsigned char *other_config_descr;
 
+extern xdata unsigned char bos_descr[];
+extern xdata unsigned char VENDOR_MS_OS_20_REQUEST;
+extern xdata unsigned char ms_os_20_descr[];
+
 static void
 setup_descriptors (void)
 {
@@ -151,6 +155,12 @@ usb_handle_setup_packet (void)
     break;
     
   case bmRT_TYPE_VENDOR:
+    if (bRequest == VENDOR_MS_OS_20_REQUEST && wIndexL == 0x07 && wIndexH == 0x00) {
+      SUDPTRH = MSB (ms_os_20_descr);
+      SUDPTRL = LSB (ms_os_20_descr);
+      break;
+    }
+
     // call the application code.
     // If it handles the command it returns non-zero
 
@@ -215,6 +225,15 @@ usb_handle_setup_packet (void)
 	    SUDPTRL = LSB (other_config_descr);
 	  }
 	  break;
+
+        case DT_BOS:
+          // EZ-USB's automation can't handle this descriptor.
+          SUDPTRCTL = 0x00;
+	  SUDPTRH = MSB (bos_descr);
+	  SUDPTRL = LSB (bos_descr);
+	  EP0BCH = bos_descr[3];
+	  EP0BCL = bos_descr[2];
+          break;
 
 	case DT_STRING:
 	  if (wValueL >= nstring_descriptors)

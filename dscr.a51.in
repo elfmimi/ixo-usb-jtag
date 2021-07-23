@@ -25,7 +25,7 @@
         VID              = 0x16C0         ; Vendor ID 0x16C0  
         PID              = 0x06AD         ; Product ID 0x06AD 
         VERSION          = 0x0004         ; Product Version (4 indicates *BM device) 
-        USB_VER          = 0x0110         ; Support USB version 1.10 
+        USB_VER          = 0x0210         ; Support USB version 2.10
         USB_ATTR         = 0x80           ; Bus powered, not self-powered, no remote wakeup
         FTD_ATTR         = 0x001C         ; Set USB version, use version string, enable suspend PD
         MAX_POWER        = 75             ; need 2*75 mA max
@@ -36,18 +36,25 @@
         DSCR_INTRFC      =   4        ; Descriptor type: Interface
         DSCR_ENDPNT      =   5        ; Descriptor type: Endpoint
         DSCR_DEVQUAL     =   6        ; Descriptor type: Device Qualifier
+        DSCR_BOS         =  15        ; Descriptor type: BOS ( Binary Device Object Store )
+        DSCR_DEVCAP      =  16        ; Descriptor type: Device Capability
         
         DSCR_DEVICE_LEN  =  18
         DSCR_CONFIG_LEN  =   9
         DSCR_INTRFC_LEN  =   9
         DSCR_ENDPNT_LEN  =   7
         DSCR_DEVQUAL_LEN =  10
+        DSCR_BOS_LEN     =   5
         
         ET_CONTROL       =   0        ; Endpoint type: Control
         ET_ISO           =   1        ; Endpoint type: Isochronous
         ET_BULK          =   2        ; Endpoint type: Bulk
         ET_INT           =   3        ; Endpoint type: Interrupt
         
+        DEVCAP_PLATFORM  =   5
+
+        VENDOR_MS_OS_20_REQUEST = 0xCC
+
 ;;; --------------------------------------------------------
 ;;;        external ram data
 ;;;--------------------------------------------------------
@@ -99,7 +106,7 @@ _high_speed_devqual_descr::
         .db        0xFF             ; bDeviceClass
         .db        0xFF             ; bDeviceSubClass
         .db        0xFF             ; bDeviceProtocol
-        .db        64               ; bMaxPacketSize0
+        .db        64              ; bMaxPacketSize0
         .db        1                ; bNumConfigurations (one config at 12Mb/sec)
         .db        0                ; bReserved
         
@@ -134,8 +141,8 @@ _dscr_attrpow::
         .db        DSCR_ENDPNT
         .db        0x81             ; bEndpointAddress (EP 1 IN)
         .db        ET_BULK          ; bmAttributes
-        .db        <64              ; wMaxPacketSize (LSB)
-        .db        >64              ; wMaxPacketSize (MSB)
+        .db        <512              ; wMaxPacketSize (LSB)
+        .db        >512              ; wMaxPacketSize (MSB)
         .db        0                ; bInterval (iso only)
 
         ;; endpoint descriptor
@@ -146,8 +153,8 @@ _dscr_attrpow::
         .db        ET_BULK          ; bmAttributes
         ;;; TODO (HD): Sune Mai's version has the following two values at 512 ?
         ;;; --> compare with EP2CFG in usbjtag.c
-        .db        <64              ; wMaxPacketSize (LSB)
-        .db        >64              ; wMaxPacketSize (MSB)
+        .db        <512              ; wMaxPacketSize (LSB)
+        .db        >512              ; wMaxPacketSize (MSB)
         .db        0                ; bInterval (iso only)
 
 _high_speed_config_descr_end:                
@@ -237,6 +244,47 @@ _full_speed_config_descr::
         
 _full_speed_config_descr_end:        
         
+;;; ----------------------------------------------------------------
+;;;                        BOS ( Binary Device Object Store )
+;;; ----------------------------------------------------------------
+
+        .even
+_bos_descr::
+        .db        DSCR_BOS_LEN
+        .db        DSCR_BOS
+        .db        (_bos_descr_end - _bos_descr) % 256
+        .db        (_bos_descr_end - _bos_descr) / 256
+        .db        0x01
+        ; Device Capability - Platform Descriptor
+_platform_descr:
+        .db        (_platform_descr_end - _platform_descr)
+        .db        DSCR_DEVCAP
+        .db        DEVCAP_PLATFORM
+        .db        0x00
+        .db        0xDF, 0x60, 0xDD, 0xD8, 0x89, 0x45, 0xC7, 0x4C, 0x9C, 0xD2, 0x65, 0x9D, 0x9E, 0x64, 0x8A, 0x9F
+        .db        0x00, 0x00, 0x03, 0x06
+        .db        (_ms_os_20_descr_end - _ms_os_20_descr) % 256
+        .db        (_ms_os_20_descr_end - _ms_os_20_descr) / 256
+_VENDOR_MS_OS_20_REQUEST::
+        .db        VENDOR_MS_OS_20_REQUEST, 0x00
+_platform_descr_end:
+_bos_descr_end:
+
+;;; ----------------------------------------------------------------
+;;;                        MS OS 2.0 Descriptors
+;;; ----------------------------------------------------------------
+
+        .even
+_ms_os_20_descr::
+        .db        0x0A, 0x00, 0x00, 0x00
+        .db        0x00, 0x00, 0x03, 0x06
+        .db        (_ms_os_20_descr_end - _ms_os_20_descr) % 256
+        .db        (_ms_os_20_descr_end - _ms_os_20_descr) / 256
+        .db        0x14, 0x00, 0x03, 0x00
+        .db        'W, 'I, 'N, 'U, 'S, 'B, 0, 0
+        .db        0, 0, 0, 0, 0, 0, 0, 0
+_ms_os_20_descr_end:
+
 ;;; ----------------------------------------------------------------
 ;;;                        string descriptors
 ;;; ----------------------------------------------------------------

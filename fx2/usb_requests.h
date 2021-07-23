@@ -70,6 +70,7 @@
 #define	DT_DEVQUAL		6
 #define	DT_OTHER_SPEED		7
 #define	DT_INTERFACE_POWER	8
+#define	DT_BOS                 15
 
 // standard feature selectors
 
